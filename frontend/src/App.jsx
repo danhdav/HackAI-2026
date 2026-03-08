@@ -111,12 +111,30 @@ function App() {
     }
     setError('')
     setStep('processing')
-    // TODO: Connect to backend API here.
-    // When the API response is received, call setStep('results') and update result data.
-    // Example:
-    // fetch('/api/analyze', { method: 'POST', body: formData })
-    //   .then(res => res.json())
-    //   .then(data => { setResults(data); setStep('results') })
+
+    const formData = new FormData()
+    formData.append('files', files['W2.pdf'])
+    formData.append('files', files['1098-T.pdf'])
+
+    fetch('http://localhost:8000/api/parser/box-data', {
+      method: 'POST',
+      body: formData,
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Failed to analyze documents')
+        }
+        return res.json()
+      })
+      .then((data) => {
+        console.log('Parsed box_data from backend:', data)
+        setStep('results')
+      })
+      .catch((err) => {
+        console.error('Error calling backend API:', err)
+        setError('Something went wrong analyzing your documents. Please try again.')
+        setStep('upload')
+      })
   }
 
   const handleStartOver = () => {

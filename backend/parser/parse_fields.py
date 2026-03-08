@@ -1,24 +1,25 @@
+# This file constructs a dictionary of the categorized tax data from the API response
+
 def parse_tax_fields(document_fields, document_type):
     parsed_data = {"parsed_data": {document_type: {}}}
     form = parsed_data["parsed_data"][document_type]
 
-    # Money-related 1098-T fields
+    # Money-related 1098-T and W-2 fields
     money_fields = [
-        # 1098
+        # 1098-T
         "PaymentReceived",
         "AdjustmentsForPriorYear",
         "Scholarships",
         "ScholarshipsAdjustments",
-        "InsuranceContractReimbursements"
-
-        # W2
+        "InsuranceContractReimbursements",
+        # W-2
         "WagesTipsAndOtherCompensation",
         "FederalIncomeTaxWithheld",
         "SocialSecurityWages",
         "SocialSecurityTaxWithheld",
         "MedicareWagesAndTips",
         "MedicareTaxWithheld",
-        "SocialSecurityTips"
+        "SocialSecurityTips",
     ]
 
     for field in money_fields:
