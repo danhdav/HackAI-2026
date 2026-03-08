@@ -1,4 +1,4 @@
-import { useState, useRef, Fragment } from 'react'
+import { useState, useRef, Fragment, useEffect } from 'react'
 import './App.css'
 
 const ALLOWED_FILES = ['W2.pdf', '1098-T.pdf']
@@ -76,6 +76,21 @@ function App() {
   const [chatInput, setChatInput] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState('')
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
+  const toggleDark = () => {
+  setDarkMode(prev => {
+    const next = !prev
+    localStorage.setItem('theme', next ? 'dark' : 'light')
+    return next
+    })
+  }
+  useEffect(() => {
+  if (darkMode) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+    }
+  }, [darkMode])
   const fileInputRef = useRef(null)
   const uploadRef = useRef(null)
   const chatEndRef = useRef(null)
@@ -170,6 +185,9 @@ function App() {
           </div>
         </div>
         <div className="navbar-right">
+          <button className="nav-btn dark-toggle-btn" onClick={toggleDark} title="Toggle dark mode">
+            {darkMode ? '☀️' : '🌙'}
+          </button>
           <a href="/1040pdf.pdf" target="_blank" rel="noopener noreferrer" className="nav-btn">
             📄 View 1040
           </a>

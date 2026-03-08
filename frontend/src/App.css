@@ -18,6 +18,24 @@
   --radius-sm: 8px;
 }
 
+/* Dark mode */
+.dark {
+  --bg: #0F1A15;
+  --surface: #1A2B23;
+  --border: #2A3D33;
+  --border-hover: #3A5044;
+  --text-primary: #E0E6E3;
+  --text-secondary: #A0B0A8;
+  --text-muted: #607870;
+  --accent: #1A8A6E;
+  --accent-hover: #1D9E7E;
+  --accent-dark: #2AA88A;
+  --accent-light: #0F2A20;
+  --accent-subtle: #1A3D2D;
+  --teal: #2AA88A;
+  --teal-light: #0F2520;
+}
+
 /* Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
