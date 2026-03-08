@@ -21,9 +21,13 @@ async def run_calculations(session_id: str) -> Draft1040Response:
     draft = calculation_service.compute_draft_1040(
         parsed_data=existing.parsed_data.model_dump(by_alias=True)
     )
+    calculation_inputs = calculation_service.build_calculation_inputs(
+        parsed_data=existing.parsed_data.model_dump(by_alias=True)
+    )
     updated = session_service.save_draft_1040(
         session_id=session_id,
         draft_1040=draft.model_dump(),
+        calculation_inputs=calculation_inputs,
     )
     if not updated:
         raise HTTPException(status_code=500, detail="Failed to persist draft.")

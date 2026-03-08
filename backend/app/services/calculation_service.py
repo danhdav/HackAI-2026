@@ -32,6 +32,18 @@ class CalculationService:
 
         return round(tax, 2)
 
+    def _extract_inputs(self, parsed_data: dict) -> tuple[float, float, float, float]:
+        """Extract normalized numeric inputs from parsed data payload."""
+        w2_data = parsed_data.get("w2") or {}
+        t1098_data = parsed_data.get("1098t") or {}
+
+        wages = max(float(w2_data.get("box1", 0.0)), 0.0)
+        withholding = max(float(w2_data.get("box2", 0.0)), 0.0)
+        tuition_paid = max(float(t1098_data.get("box1", 0.0)), 0.0)
+        scholarships = max(float(t1098_data.get("box5", 0.0)), 0.0)
+
+        return wages, withholding, tuition_paid, scholarships
+
     def compute_draft_1040(self, parsed_data: dict) -> Draft1040Values:
         """
         Apply MVP deterministic formulas for selected 1040 fields.
@@ -39,9 +51,7 @@ class CalculationService:
         TODO: Add education credit logic using 1098-T values.
         TODO: Add owed amount handling (e.g., line 37) if withholding < tax.
         """
-        w2_data = parsed_data.get("w2") or {}
-        wages = float(w2_data.get("box1", 0.0))
-        withholding = float(w2_data.get("box2", 0.0))
+        wages, withholding, _, _ = self._extract_inputs(parsed_data)
 
         line_1a = wages
         line_1z = line_1a
@@ -71,3 +81,24 @@ class CalculationService:
             line_25d=round(line_25d, 2),
             line_34=round(line_34, 2),
         )
+
+    def build_calculation_inputs(self, parsed_data: dict) -> dict:
+        """
+        Return normalized inputs/intermediate values used for drafting.
+
+        This keeps storage explicit so frontend and chatbot can explain
+        how the deterministic draft was produced.
+        """
+        wages, withholding, tuition_paid, scholarships = self._extract_inputs(parsed_data)
+        taxable_income = max(wages - STANDARD_DEDUCTION_SINGLE, 0.0)
+
+        return {
+            "filing_status": "single",
+            "deduction_type": "standard",
+            "standard_deduction_single": round(STANDARD_DEDUCTION_SINGLE, 2),
+            "w2_box1_wages": round(wages, 2),
+            "w2_box2_withholding": round(withholding, 2),
+            "form_1098t_box1_tuition_paid": round(tuition_paid, 2),
+            "form_1098t_box5_scholarships": round(scholarships, 2),
+            "taxable_income": round(taxable_income, 2),
+        }
