@@ -1,13 +1,23 @@
 from pathlib import Path
 import ast
+import os
 import subprocess
 import sys
 from typing import List, Dict, Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pymongo import MongoClient
+from bson import ObjectId
 
 
 router = APIRouter(prefix="/api/parser", tags=["parser"])
+
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "hackai_tax_assistant")
+MONGODB_COLLECTION_NAME = os.getenv("MONGODB_COLLECTION_BOXDATA", "box_data")
+
+_mongo_client = MongoClient(MONGODB_URI)
+_boxdata_collection = _mongo_client[MONGODB_DB_NAME][MONGODB_COLLECTION_NAME]
 
 
 def _run_extract_script(file_paths: List[Path]) -> str:
@@ -176,4 +186,73 @@ async def get_box_data(files: List[UploadFile] = File(...)):
         "calculations": calculations,
         "box_data": box_data,
     }
+
+
+@router.post("/box-data/store")
+async def store_box_data(payload: Dict[str, Any]):
+    """
+    Store the original box_data (and optional results_sections) in MongoDB.
+
+    Expected payload shape:
+    {
+      "box_data": { ... },
+      "results_sections": [ { "title": "...", "items": [ { "label", "value", "line", ... } ] } ]  # optional
+    }
+    """
+    if "box_data" not in payload:
+        raise HTTPException(status_code=400, detail="Missing 'box_data' in request body.")
+
+    doc = {"box_data": payload["box_data"]}
+    if "results_sections" in payload:
+        doc["results_sections"] = payload["results_sections"]
+    result = _boxdata_collection.insert_one(doc)
+
+    return {"id": str(result.inserted_id)}
+
+
+@router.put("/box-data/{doc_id}")
+async def update_box_data(doc_id: str, payload: Dict[str, Any]):
+    """
+    Update a stored document with new results_sections (e.g. after user edits in the UI).
+
+    Expected payload shape:
+    {
+      "results_sections": [ { "title": "...", "items": [ { "label", "value", "line", ... } ] }
+    }
+    """
+    if "results_sections" not in payload:
+        raise HTTPException(status_code=400, detail="Missing 'results_sections' in request body.")
+
+    try:
+        oid = ObjectId(doc_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid document id.")
+
+    result = _boxdata_collection.update_one(
+        {"_id": oid},
+        {"$set": {"results_sections": payload["results_sections"]}},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    return {"status": "updated", "id": doc_id}
+
+
+@router.delete("/box-data/{doc_id}")
+async def delete_box_data(doc_id: str):
+    """
+    Delete a previously stored box_data document by its MongoDB ObjectId.
+    """
+    try:
+        oid = ObjectId(doc_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid document id.")
+
+    result = _boxdata_collection.delete_one({"_id": oid})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    return {"status": "deleted", "id": doc_id}
 

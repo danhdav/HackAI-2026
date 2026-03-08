@@ -249,6 +249,21 @@ body {
 .result-card.highlight .result-card-value { color: var(--accent); }
 .result-card-value--lg { font-size: 28px; }
 .result-card-line { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.result-card-input {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary);
+  width: 100%; max-width: 100%; padding: 8px 10px; margin: 0; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg-card);
+}
+.result-card.highlight .result-card-input { color: var(--accent); }
+.result-card-input.result-card-value--lg { font-size: 28px; }
+
+.results-actions {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+}
+.save-status { font-size: 14px; margin-left: 8px; }
+.save-status--ok { color: var(--accent); }
+.save-status--err { color: var(--error, #c00); }
+.save-status--hint { color: var(--text-muted); font-size: 13px; }
 
 /* Chat bot */
 .chatbot-section {

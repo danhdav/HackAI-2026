@@ -1,7 +1,65 @@
 import { useState, useRef, Fragment } from 'react'
 import './App.css'
 
+const API_BASE = 'http://localhost:8000/api/parser'
 const ALLOWED_FILES = ['W2.pdf', '1098-T.pdf']
+
+function fmtMoney(n) {
+  if (n == null || Number.isNaN(n)) return '$0'
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+function fmtPct(n) {
+  if (n == null || Number.isNaN(n)) return '0%'
+  return (n * 100).toFixed(1) + '%'
+}
+
+function buildSectionsFromCalculations(calculations) {
+  if (!calculations) return null
+  const inc = calculations.income || {}
+  const ded = calculations.deductions_credits || {}
+  const tax = calculations.tax_and_refund || {}
+  const totalDed = (ded.standard_deduction || 0) + (ded.non_taxable_scholarships || 0) + (ded.education_credits || 0)
+  const effRate = tax.taxable_income ? (tax.estimated_tax_liability / tax.taxable_income) : 0
+  return [
+    {
+      title: 'Income',
+      items: [
+        { label: 'W2 Wages', value: fmtMoney(inc.w2_wages), line: 'Line 1a' },
+        { label: 'Scholarship / Grant Income (1098-T)', value: fmtMoney(inc.scholarship_income_taxable), line: 'Line 1h' },
+        { label: 'Total Income', value: fmtMoney(inc.total_income), line: 'Line 9' },
+        { label: 'Adjusted Gross Income (AGI)', value: fmtMoney(inc.agi), line: 'Line 11a' },
+      ],
+    },
+    {
+      title: 'Deductions & Credits',
+      items: [
+        { label: 'Standard Deduction', value: fmtMoney(ded.standard_deduction), line: 'Line 12' },
+        { label: 'Itemized Deductions', value: '$0', line: 'Line 12 (Sch. A)' },
+        { label: 'Non-Taxable Scholarships', value: fmtMoney(ded.non_taxable_scholarships), line: 'Excluded from Line 1h' },
+        { label: 'Education Credits (AOTC)', value: fmtMoney(ded.education_credits), line: 'Sch. 3, Line 3 → Line 20' },
+        { label: 'Total Deductions & Credits', value: fmtMoney(totalDed), line: 'Used to calc Line 15', fullWidth: true },
+      ],
+    },
+    {
+      title: 'Tax & Refund',
+      items: [
+        { label: 'Taxable Income', value: fmtMoney(tax.taxable_income), line: 'Line 15' },
+        { label: 'Tax Bracket', value: fmtPct(tax.tax_bracket_rate), line: 'Used to calc Line 16' },
+        { label: 'Effective Tax Rate', value: fmtPct(effRate), line: 'Line 16 ÷ Line 15' },
+        { label: 'Estimated Tax Liability', value: fmtMoney(tax.estimated_tax_liability), line: 'Line 16' },
+        { label: 'Federal Tax Withheld', value: fmtMoney(tax.federal_tax_withheld), line: 'Line 25a' },
+        { label: 'FICA / Social Security Withheld', value: fmtMoney(tax.fica_withheld), line: 'W-2 Box 4; not on 1040' },
+        { label: 'Medicare Withheld', value: fmtMoney(tax.medicare_withheld), line: 'W-2 Box 6; not on 1040' },
+        { label: 'State Tax (Estimated)', value: '$2,900', line: 'Sch. A, Line 5a (if itemizing)' },
+        { label: 'Self-Employment Tax', value: '$0', line: 'Sch. SE → Line 15' },
+        { label: 'Child Tax Credit', value: '$0', line: 'Sch. 8812 → Line 19' },
+        { label: 'Earned Income Credit (EIC)', value: 'Not Eligible', line: 'Line 27' },
+        { label: 'Alternative Minimum Tax (AMT)', value: '$0', line: 'Line 17' },
+        { label: 'Potential Refund', value: fmtMoney(tax.potential_refund), line: 'Line 35a', fullWidth: true, highlight: true },
+      ],
+    },
+  ]
+}
 
 const RESULTS_SECTIONS = [
   {
@@ -76,6 +134,10 @@ function App() {
   const [chatInput, setChatInput] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState('')
+  const [resultsSections, setResultsSections] = useState(RESULTS_SECTIONS)
+  const [storedDocId, setStoredDocId] = useState(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [saveStatus, setSaveStatus] = useState(null)
   const fileInputRef = useRef(null)
   const uploadRef = useRef(null)
   const chatEndRef = useRef(null)
@@ -127,8 +189,17 @@ function App() {
         return res.json()
       })
       .then((data) => {
-        console.log('Parsed box_data from backend:', data)
+        const sections = buildSectionsFromCalculations(data.calculations) || RESULTS_SECTIONS
+        setResultsSections(sections)
         setStep('results')
+        fetch(`${API_BASE}/box-data/store`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ box_data: data.box_data, results_sections: sections }),
+        })
+          .then((r) => r.ok ? r.json() : Promise.reject(new Error('Store failed')))
+          .then(({ id }) => setStoredDocId(id))
+          .catch(() => setStoredDocId(null))
       })
       .catch((err) => {
         console.error('Error calling backend API:', err)
@@ -142,8 +213,43 @@ function App() {
     setError('')
     setChatMessages(INITIAL_CHAT)
     setChatOpen(false)
+    setResultsSections(RESULTS_SECTIONS)
+    setStoredDocId(null)
+    setIsEditMode(false)
+    setSaveStatus(null)
     setStep('upload')
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const updateResultItem = (sectionIndex, itemIndex, newValue) => {
+    setResultsSections((prev) => {
+      const next = prev.map((s, si) =>
+        si !== sectionIndex
+          ? s
+          : { ...s, items: s.items.map((item, ii) => (ii !== itemIndex ? item : { ...item, value: newValue })) }
+      )
+      return next
+    })
+  }
+
+  const handleSaveResults = () => {
+    if (!storedDocId) {
+      setSaveStatus('error')
+      return
+    }
+    setSaveStatus('saving')
+    fetch(`${API_BASE}/box-data/${storedDocId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ results_sections: resultsSections }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Update failed')
+        setSaveStatus('saved')
+        setIsEditMode(false)
+        setTimeout(() => setSaveStatus(null), 2000)
+      })
+      .catch(() => setSaveStatus('error'))
   }
 
   const handleGetStarted = () => {
@@ -310,7 +416,32 @@ function App() {
               Here's what we calculated from your documents. Use these values to fill out your Form 1040.
             </p>
 
-            {RESULTS_SECTIONS.map((section) => (
+            <div className="results-actions">
+              <button
+                type="button"
+                className={`btn ${isEditMode ? 'btn-secondary' : 'btn-primary'}`}
+                onClick={() => setIsEditMode(!isEditMode)}
+              >
+                {isEditMode ? 'Cancel Edit' : 'Edit'}
+              </button>
+              {isEditMode && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSaveResults}
+                  disabled={saveStatus === 'saving' || !storedDocId}
+                >
+                  {saveStatus === 'saving' ? 'Saving…' : 'Save'}
+                </button>
+              )}
+              {saveStatus === 'saved' && <span className="save-status save-status--ok">Saved</span>}
+              {saveStatus === 'error' && <span className="save-status save-status--err">Save failed</span>}
+              {isEditMode && !storedDocId && (
+                <span className="save-status save-status--hint">Generate from documents first to save edits.</span>
+              )}
+            </div>
+
+            {resultsSections.map((section, sectionIndex) => (
               <div key={section.title}>
                 <p className="section-label">{section.title}</p>
                 <div className="results-grid">
@@ -320,9 +451,19 @@ function App() {
                       className={`result-card ${item.fullWidth ? 'full-width' : ''} ${item.highlight ? 'highlight' : ''}`}
                     >
                       <div className="result-card-label">{item.label}</div>
-                      <div className={`result-card-value ${item.highlight ? 'result-card-value--lg' : ''}`}>
-                        {item.value}
-                      </div>
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          className={`result-card-input ${item.highlight ? 'result-card-value--lg' : ''}`}
+                          value={item.value}
+                          onChange={(e) => updateResultItem(sectionIndex, i, e.target.value)}
+                          aria-label={item.label}
+                        />
+                      ) : (
+                        <div className={`result-card-value ${item.highlight ? 'result-card-value--lg' : ''}`}>
+                          {item.value}
+                        </div>
+                      )}
                       <div className="result-card-line">{item.line}</div>
                     </div>
                   ))}
