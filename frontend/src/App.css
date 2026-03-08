@@ -1,4 +1,4 @@
-/* ── Page & Card ─────────────────────────────────────────── */
+/* Page and Card */
 .page {
   min-height: 100vh;
   background-color: #f5f5f5;
@@ -19,7 +19,7 @@
   box-sizing: border-box;
 }
 
-/* ── Header ──────────────────────────────────────────────── */
+/* Header */
 .title {
   font-size: 2rem;
   font-weight: 700;
@@ -35,7 +35,7 @@
   margin: 0 0 24px;
 }
 
-/* ── Action Bar ──────────────────────────────────────────── */
+/* Action bar */
 .action-bar {
   display: flex;
   gap: 12px;
@@ -44,7 +44,7 @@
   flex-wrap: wrap;
 }
 
-/* ── Buttons ─────────────────────────────────────────────── */
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -84,7 +84,7 @@
   font-size: 1rem;
 }
 
-/* ── Drop Zone ───────────────────────────────────────────── */
+/* Drop box (where u can drag and drop files)*/
 .drop-zone {
   border: 2px dashed #d1d5db;
   border-radius: 8px;
@@ -118,7 +118,7 @@
   margin: 0;
 }
 
-/* ── Error Message ───────────────────────────────────────── */
+/* error message */
 .error-msg {
   font-size: 0.83rem;
   color: #b91c1c;
@@ -129,7 +129,7 @@
   margin: 0 0 10px;
 }
 
-/* ── File Rows ───────────────────────────────────────────── */
+/* File rows */
 .file-row {
   display: flex;
   align-items: center;
@@ -163,7 +163,7 @@
   border-color: transparent;
 }
 
-/* ── Results Box ─────────────────────────────────────────── */
+/* Results box */
 .results-box {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -228,7 +228,7 @@
   white-space: nowrap;
 }
 
-/* ── Chatbot Section ─────────────────────────────────────── */
+/* Chatbot */
 .chatbot-section {
   margin-top: 16px;
   border: 1px solid #e5e7eb;
@@ -265,7 +265,7 @@
   color: #9ca3af;
 }
 
-/* ── Chat Window ─────────────────────────────────────────── */
+/* This is for the window of the chatbot */
 .chat-window {
   border-top: 1px solid #e5e7eb;
   display: flex;
@@ -329,7 +329,7 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-/* ── Responsive ──────────────────────────────────────────── */
+/* Responsive to mobile */
 @media (max-width: 560px) {
   .card {
     padding: 24px 20px;

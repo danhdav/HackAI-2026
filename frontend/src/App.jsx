@@ -4,28 +4,28 @@ import './App.css'
 const ALLOWED_FILES = ['W2.pdf', '1098-T.pdf']
 
 const HARDCODED_RESULTS = [
-  { label: 'Total Income', value: '$58,000' },
-  { label: 'W2 Wages', value: '$52,000' },
-  { label: 'Scholarship / Grant Income (1098-T)', value: '$6,000' },
-  { label: 'Adjusted Gross Income (AGI)', value: '$54,500' },
-  { label: 'Taxable Income', value: '$40,500' },
-  { label: 'Standard Deduction', value: '$14,000' },
-  { label: 'Itemized Deductions', value: '$0' },
-  { label: 'Non-Taxable Scholarships', value: '$13,500' },
-  { label: 'Education Credits (AOTC)', value: '$2,500' },
-  { label: 'Total Deductions & Credits', value: '$16,500' },
-  { label: 'Federal Tax Withheld', value: '$5,200' },
-  { label: 'Estimated Tax Liability', value: '$4,000' },
-  { label: 'Potential Refund', value: '$1,200' },
-  { label: 'Tax Bracket', value: '12%' },
-  { label: 'Effective Tax Rate', value: '9.8%' },
-  { label: 'FICA / Social Security Withheld', value: '$3,224' },
-  { label: 'Medicare Withheld', value: '$754' },
-  { label: 'State Tax (Estimated)', value: '$2,900' },
-  { label: 'Self-Employment Tax', value: '$0' },
-  { label: 'Child Tax Credit', value: '$0' },
-  { label: 'Earned Income Credit (EIC)', value: 'Not Eligible' },
-  { label: 'Alternative Minimum Tax (AMT)', value: '$0' },
+  { label: 'Total Income', value: '$58,000', line: 'Line 9' },
+  { label: 'W2 Wages', value: '$52,000', line: 'Line 1a' },
+  { label: 'Scholarship / Grant Income (1098-T)', value: '$6,000', line: 'Line 1h' },
+  { label: 'Adjusted Gross Income (AGI)', value: '$54,500', line: 'Line 11a' },
+  { label: 'Taxable Income', value: '$40,500', line: 'Line 15' },
+  { label: 'Standard Deduction', value: '$14,000', line: 'Line 12' },
+  { label: 'Itemized Deductions', value: '$0', line: 'Line 12 (Sch. A)' },
+  { label: 'Non-Taxable Scholarships', value: '$13,500', line: 'Excluded from Line 1h' },
+  { label: 'Education Credits (AOTC)', value: '$2,500', line: 'Sch. 3, Line 3 → Line 20' },
+  { label: 'Total Deductions & Credits', value: '$16,500', line: 'Used to calc Line 15' },
+  { label: 'Federal Tax Withheld', value: '$5,200', line: 'Line 25a' },
+  { label: 'Estimated Tax Liability', value: '$4,000', line: 'Line 16' },
+  { label: 'Potential Refund', value: '$1,200', line: 'Line 35a' },
+  { label: 'Tax Bracket', value: '12%', line: 'Used to calc Line 16' },
+  { label: 'Effective Tax Rate', value: '9.8%', line: 'Line 16 ÷ Line 15' },
+  { label: 'FICA / Social Security Withheld', value: '$3,224', line: 'W-2 Box 4; not on 1040' },
+  { label: 'Medicare Withheld', value: '$754', line: 'W-2 Box 6; not on 1040' },
+  { label: 'State Tax (Estimated)', value: '$2,900', line: 'Sch. A, Line 5a (if itemizing)' },
+  { label: 'Self-Employment Tax', value: '$0', line: 'Sch. SE → Line 15' },
+  { label: 'Child Tax Credit', value: '$0', line: 'Sch. 8812 → Line 19' },
+  { label: 'Earned Income Credit (EIC)', value: 'Not Eligible', line: 'Line 27' },
+  { label: 'Alternative Minimum Tax (AMT)', value: '$0', line: 'Line 17' },
 ]
 
 const INITIAL_CHAT = [
@@ -167,7 +167,7 @@ function App() {
               <div className="results-grid">
                 {HARDCODED_RESULTS.map((item, i) => (
                   <div key={i} className="result-item">
-                    <span className="result-label">• {item.label}:</span>
+                    <span className="result-label">• {item.label} ({item.line}):</span>
                     <span className="result-value">{item.value}</span>
                   </div>
                 ))}
