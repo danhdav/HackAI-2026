@@ -37,3 +37,12 @@ def get_sessions_collection() -> Collection | None:
         return None
     db = client[settings.mongodb_db_name]
     return db[settings.mongodb_collection_sessions]
+
+
+def get_boxdata_collection() -> Collection | None:
+    """Return Mongo collection for parser box-data docs or None."""
+    client = get_mongo_client()
+    if client is None:
+        return None
+    db = client[settings.mongodb_db_name]
+    return db[settings.mongodb_collection_boxdata]

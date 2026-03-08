@@ -160,6 +160,53 @@ class MongoTaxSessionService:
 
         return TaxSessionDocument.model_validate(existing)
 
+    def append_chat_history(
+        self,
+        *,
+        session_id: str,
+        user_message: str,
+        assistant_message: str,
+    ) -> TaxSessionDocument | None:
+        """Append chatbot user/assistant messages to session history."""
+        now = _utcnow()
+        user_event = {"role": "user", "message": user_message, "timestamp": now.isoformat()}
+        assistant_event = {
+            "role": "assistant",
+            "message": assistant_message,
+            "timestamp": now.isoformat(),
+        }
+
+        collection = get_sessions_collection()
+        if collection is not None:
+            result = collection.update_one(
+                {"session_id": session_id},
+                {
+                    "$push": {"chatbot_history": {"$each": [user_event, assistant_event]}},
+                    "$set": {"updated_at": now, "status.chatbot_status": "enabled"},
+                },
+                upsert=False,
+            )
+            if result.matched_count == 0:
+                return None
+            stored_doc = collection.find_one({"session_id": session_id}, {"_id": 0})
+            if not stored_doc:
+                return None
+            return TaxSessionDocument.model_validate(stored_doc)
+
+        existing = self._memory_store.get(session_id)
+        if not existing:
+            return None
+        history = existing.get("chatbot_history", [])
+        history.extend([user_event, assistant_event])
+        existing["chatbot_history"] = history
+        existing["updated_at"] = now
+        existing["status"] = {
+            **existing.get("status", TaxSessionStatus().model_dump()),
+            "chatbot_status": "enabled",
+        }
+        self._memory_store[session_id] = existing
+        return TaxSessionDocument.model_validate(existing)
+
     @staticmethod
     def normalize_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
         """Normalize metadata into the expected model shape."""
