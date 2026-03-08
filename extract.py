@@ -5,7 +5,7 @@ import base64
 from pathlib import Path
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 from utility import client, is_file_or_url, load_file_as_base64
-from parse_w2 import print_w2_fields
+from parse_w2 import parse_w2_fields
 
 file_path = Path('w2-filled.pdf')
 
@@ -46,6 +46,6 @@ document_fields = result.documents[0]['fields']
 # https://github.com/Azure-Samples/document-intelligence-code-samples/blob/main/schema/2024-11-30-ga/us-tax/w2.md
 
 if model_id == "prebuilt-tax.us.w2":
-    print_w2_fields(document_fields)
+    parse_w2_fields(document_fields)
 # else:
     # print_1098_fields(document_fields)
