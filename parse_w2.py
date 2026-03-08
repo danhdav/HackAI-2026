@@ -1,130 +1,158 @@
-def print_w2_fields(document_fields):
+def parse_w2_fields(document_fields):
+
+    parsed_data = {"parsed_data": {"w2": {}}}
+    w2 = parsed_data["parsed_data"]["w2"]
 
     # -------------------------
     # Box 1
     # -------------------------
     if document_fields.get('WagesTipsAndOtherCompensation'):
-        print('Box1:', document_fields['WagesTipsAndOtherCompensation']['content'])
+        w2["box1"] = document_fields['WagesTipsAndOtherCompensation']['content']
 
     # -------------------------
     # Box 2
     # -------------------------
     if document_fields.get('FederalIncomeTaxWithheld'):
-        print('Box2:', document_fields['FederalIncomeTaxWithheld']['content'])
+        w2["box2"] = document_fields['FederalIncomeTaxWithheld']['content']
 
     # -------------------------
     # Box 3
     # -------------------------
     if document_fields.get('SocialSecurityWages'):
-        print('Box3:', document_fields['SocialSecurityWages']['content'])
+        w2["box3"] = document_fields['SocialSecurityWages']['content']
 
     # -------------------------
     # Box 4
     # -------------------------
     if document_fields.get('SocialSecurityTaxWithheld'):
-        print('Box4:', document_fields['SocialSecurityTaxWithheld']['content'])
+        w2["box4"] = document_fields['SocialSecurityTaxWithheld']['content']
 
     # -------------------------
     # Box 5
     # -------------------------
     if document_fields.get('MedicareWagesAndTips'):
-        print('Box5:', document_fields['MedicareWagesAndTips']['content'])
+        w2["box5"] = document_fields['MedicareWagesAndTips']['content']
 
     # -------------------------
     # Box 6
     # -------------------------
     if document_fields.get('MedicareTaxWithheld'):
-        print('Box6:', document_fields['MedicareTaxWithheld']['content'])
+        w2["box6"] = document_fields['MedicareTaxWithheld']['content']
 
     # -------------------------
     # Box 7
     # -------------------------
     if document_fields.get('SocialSecurityTips'):
         if document_fields['SocialSecurityTips']['content']:
-            print('Box7:', document_fields['SocialSecurityTips']['content'])
+            w2["box7"] = document_fields['SocialSecurityTips']['content']
 
     # -------------------------
     # Box 8
     # -------------------------
     if document_fields.get('AllocatedTips'):
-        print('Box8:', document_fields['AllocatedTips']['content'])
+        w2["box8"] = document_fields['AllocatedTips']['content']
 
     # -------------------------
-    # Box 9 (Verification Code)
+    # Box 9
     # -------------------------
     if document_fields.get('VerificationCode'):
-        print('Box9:', document_fields['VerificationCode']['content'])
+        w2["box9"] = document_fields['VerificationCode']['content']
 
     # -------------------------
     # Box 10
     # -------------------------
     if document_fields.get('DependentCareBenefits'):
-        print('Box10:', document_fields['DependentCareBenefits']['content'])
+        w2["box10"] = document_fields['DependentCareBenefits']['content']
 
     # -------------------------
     # Box 11
     # -------------------------
     if document_fields.get('NonQualifiedPlans'):
-        print('Box11:', document_fields['NonQualifiedPlans']['content'])
+        w2["box11"] = document_fields['NonQualifiedPlans']['content']
 
     # -------------------------
-    # Box 12 (Multiple entries)
+    # Box 12 (multiple)
     # -------------------------
     if document_fields.get('AdditionalInfo'):
+        w2["box12"] = []
+
         for item in document_fields['AdditionalInfo']['valueArray']:
             code = item['valueObject']['LetterCode']['content']
             amount = item['valueObject']['Amount']['content']
-            print(f'Box12 ({code}):', amount)
+
+            w2["box12"].append({
+                "code": code,
+                "amount": amount
+            })
 
     # -------------------------
     # Box 13 Flags
     # -------------------------
+    box13 = {}
+
     if document_fields.get('IsStatutoryEmployee'):
-        print('Box13 StatutoryEmployee:', document_fields['IsStatutoryEmployee']['content'])
+        box13["statutory_employee"] = document_fields['IsStatutoryEmployee']['content']
 
     if document_fields.get('IsRetirementPlan'):
-        print('Box13 RetirementPlan:', document_fields['IsRetirementPlan']['content'])
+        box13["retirement_plan"] = document_fields['IsRetirementPlan']['content']
 
     if document_fields.get('IsThirdPartySickPay'):
-        print('Box13 ThirdPartySickPay:', document_fields['IsThirdPartySickPay']['content'])
+        box13["third_party_sick_pay"] = document_fields['IsThirdPartySickPay']['content']
+
+    if box13:
+        w2["box13"] = box13
 
     # -------------------------
     # Box 14
     # -------------------------
     if document_fields.get('Other'):
-        print('Box14:', document_fields['Other']['content'])
+        w2["box14"] = document_fields['Other']['content']
 
     # -------------------------
-    # Boxes 15–17 (State)
+    # State Tax Info (15–17)
     # -------------------------
     if document_fields.get('StateTaxInfos'):
+        w2["state_tax_info"] = []
+
         for state in document_fields['StateTaxInfos']['valueArray']:
             state_obj = state['valueObject']
+            entry = {}
 
             if state_obj.get('State'):
-                print('Box15 State:', state_obj['State']['content'])
+                entry["state"] = state_obj['State']['content']
 
             if state_obj.get('EmployerStateIdNumber'):
-                print('Box15 EmployerStateID:', state_obj['EmployerStateIdNumber']['content'])
+                entry["employer_state_id"] = state_obj['EmployerStateIdNumber']['content']
 
             if state_obj.get('StateWagesTipsEtc'):
-                print('Box16 StateWages:', state_obj['StateWagesTipsEtc']['content'])
+                entry["state_wages"] = state_obj['StateWagesTipsEtc']['content']
 
             if state_obj.get('StateIncomeTax'):
-                print('Box17 StateIncomeTax:', state_obj['StateIncomeTax']['content'])
+                entry["state_income_tax"] = state_obj['StateIncomeTax']['content']
+
+            if entry:
+                w2["state_tax_info"].append(entry)
 
     # -------------------------
-    # Boxes 18–20 (Local)
+    # Local Tax Info (18–20)
     # -------------------------
     if document_fields.get('LocalTaxInfos'):
+        w2["local_tax_info"] = []
+
         for local in document_fields['LocalTaxInfos']['valueArray']:
             local_obj = local['valueObject']
+            entry = {}
 
             if local_obj.get('LocalWagesTipsEtc'):
-                print('Box18 LocalWages:', local_obj['LocalWagesTipsEtc']['content'])
+                entry["local_wages"] = local_obj['LocalWagesTipsEtc']['content']
 
             if local_obj.get('LocalIncomeTax'):
-                print('Box19 LocalIncomeTax:', local_obj['LocalIncomeTax']['content'])
+                entry["local_income_tax"] = local_obj['LocalIncomeTax']['content']
 
             if local_obj.get('LocalityName'):
-                print('Box20 LocalityName:', local_obj['LocalityName']['content'])
+                entry["locality_name"] = local_obj['LocalityName']['content']
+
+            if entry:
+                w2["local_tax_info"].append(entry)
+
+    return parsed_data
