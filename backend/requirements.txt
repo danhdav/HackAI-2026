@@ -5,3 +5,6 @@ pydantic-settings
 pymongo
 python-multipart
 python-dotenv
+certifi
+azure-ai-documentintelligence
+google-generativeai

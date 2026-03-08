@@ -3,6 +3,7 @@
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import PyMongoError
+import certifi
 
 from app.config import settings
 
@@ -16,12 +17,16 @@ def get_mongo_client() -> MongoClient | None:
         return _mongo_client
 
     try:
-        client = MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=1500)
+        client = MongoClient(
+            settings.mongodb_uri,
+            serverSelectionTimeoutMS=1500,
+            tlsCAFile=certifi.where(),
+        )
         client.admin.command("ping")
         _mongo_client = client
         return _mongo_client
-    except PyMongoError:
-        # TODO: Add structured logging/monitoring for DB connectivity failures.
+    except PyMongoError as e:
+        print("Mongo connection failed:", e)
         return None
 
 
@@ -32,3 +37,12 @@ def get_sessions_collection() -> Collection | None:
         return None
     db = client[settings.mongodb_db_name]
     return db[settings.mongodb_collection_sessions]
+
+
+def get_boxdata_collection() -> Collection | None:
+    """Return Mongo collection for parser box-data docs or None."""
+    client = get_mongo_client()
+    if client is None:
+        return None
+    db = client[settings.mongodb_db_name]
+    return db[settings.mongodb_collection_boxdata]

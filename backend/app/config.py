@@ -13,8 +13,13 @@ class Settings(BaseSettings):
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_db_name: str = "hackai_tax_assistant"
     mongodb_collection_sessions: str = "tax_sessions"
+    mongodb_collection_boxdata: str = "box_data"
 
     use_mock_parser_by_default: bool = True
+    parser_timeout_seconds: int = 120
+
+    azure_key: str = ""
+    azure_endpoint: str = ""
 
     gemini_enabled: bool = False
     gemini_api_key: str = ""

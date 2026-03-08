@@ -1,58 +1,57 @@
-import base64
+"""Azure parser integration for W-2 and 1098-T PDFs."""
+
 from pathlib import Path
-from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
-from utility import client, is_file_or_url, load_file_as_base64
-from parse_fields import parse_tax_fields
 
-file_path = Path('w2-filled.pdf')
+from parser.parse_fields import parse_tax_fields
+from parser.utility import get_document_client, is_file_or_url, load_file_as_base64
 
-if not file_path.exists():
-    raise FileNotFoundError(f'File {file_path} not found')
 
-# determine if model should be 1098 or w2 based on the document type
-if '1098t' in str(file_path):
-    model_id = "prebuilt-tax.us.1098T"
-    document_type = "1098t"
-    print("Model set to 1098-T")
-else:
-    model_id = "prebuilt-tax.us.w2"
-    document_type = "w2"
-    print("Model set to w2")
+def extract_from_file(file_path: Path) -> dict:
+    """Parse one document and return extracted field payload."""
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"File {file_path} not found")
 
-document_ai_client = client()
+    lower_name = file_path.name.lower()
+    if "1098t" in lower_name or "1098-t" in lower_name:
+        model_id = "prebuilt-tax.us.1098T"
+        document_type = "1098t"
+    elif "w2" in lower_name:
+        model_id = "prebuilt-tax.us.w2"
+        document_type = "w2"
+    else:
+        raise ValueError(
+            "Unsupported filename. Name the file with W2 or 1098-T for model selection."
+        )
 
-# doc_source = '<doc url>'
-doc_source = file_path
+    doc_client = get_document_client()
+    source = is_file_or_url(str(file_path))
+    if source == "url":
+        # Lazy import for Azure request model.
+        from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 
-if is_file_or_url(str(doc_source)) == 'url':
-    print('Doc is a url')
-    poller = document_ai_client.begin_analyze_document(
-        model_id, AnalyzeDocumentRequest(url_source=doc_source)
-    )
-elif is_file_or_url(str(doc_source)) == 'file':
-    print('Doc is a file')
-    poller = document_ai_client.begin_analyze_document(
-        model_id, {"base64Source": load_file_as_base64(doc_source)}
-    )
+        poller = doc_client.begin_analyze_document(
+            model_id, AnalyzeDocumentRequest(url_source=str(file_path))
+        )
+    elif source == "file":
+        poller = doc_client.begin_analyze_document(
+            model_id, {"base64Source": load_file_as_base64(file_path)}
+        )
+    else:
+        raise ValueError(f"Unsupported document source: {file_path}")
 
-result = poller.result()
+    result = poller.result()
+    if not result or not result.documents:
+        raise RuntimeError("No parse result returned from Azure Document Intelligence.")
 
-# dict_keys(['apiVersion', 'modelId', 'stringIndexType', 'content', 'pages', 'styles', 'documents', 'contentFormat'])
-# print(result.keys())
-# print("content:", result['content'])
-# print("Documents", result['documents'])
-# print(result['documents'][0].keys())
-if result:
-    print("Retrieval successful!")
-document_fields = result.documents[0]['fields']
-# print("Document fields:", document_fields.keys())
+    document_fields = result.documents[0]["fields"]
+    return parse_tax_fields(document_fields, document_type)
 
-# https://github.com/Azure-Samples/document-intelligence-code-samples/blob/main/schema/2024-11-30-ga/us-tax/w2.md
-# https://github.com/Azure-Samples/document-intelligence-code-samples/blob/main/schema/2024-11-30-ga/us-tax/1098/1098-t.md
 
-if model_id:
-    box_data = parse_tax_fields(document_fields, document_type)
-else:
-   print("Unsupported model")
-
-print(box_data)
+def extract_many(file_paths: list[Path]) -> dict:
+    """Parse multiple files and return dict keyed by filename."""
+    results: dict = {}
+    for path in file_paths:
+        parsed = extract_from_file(path)
+        results[path.name] = parsed
+    return results

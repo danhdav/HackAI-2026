@@ -33,8 +33,10 @@ Gemini chatbot support is scaffolded separately and optional.
 
 ### Section 3 (Optional/Future): Gemini Chatbot Integration
 - Endpoint: `POST /api/chatbot/ask/{session_id}`
-- Works in mock mode today
-- TODOs included for Gemini integration and possible future DB-edit actions via chatbot
+- Uses Gemini when enabled and falls back to deterministic mock responses
+- Grounded in stored `parsed_data` + `draft_1040`
+- Privacy-safe by design (identity fields are not parsed)
+- TODOs included for possible future DB-edit actions via chatbot
 - Backend remains fully functional without this section
 
 ## Project Structure
@@ -124,11 +126,48 @@ Response:
 ```
 
 Parser implementation status (important):
-- Current parser behavior is scaffold/mock-first.
-- Main files where parser implementation work still needs to be done:
-  - `app/services/parser_service.py` (core extraction logic for W-2/1098-T PDFs)
-  - `app/routes/parser.py` (request validation/extensions for parser options)
-  - `app/utils/sample_data.py` (expand/maintain mock fixtures used by frontend testing)
+- Parser supports Azure Document Intelligence extraction for W-2/1098-T when
+  `AZURE_KEY` and `AZURE_ENDPOINT` are configured.
+- It still supports mock mode for safe local testing and quota protection.
+- Main parser modules:
+  - `app/services/parser_service.py`
+  - `app/routes/parser.py`
+  - `parser/extract.py`
+  - `parser/parse_fields.py`
+  - `parser/utility.py`
+
+### 2b) `POST /api/parser/box-data` (Daniel frontend-compatible)
+Purpose:
+- Accepts a list of files (`files`) from frontend upload flow.
+- Runs Daniel-style parsing and returns `calculations + box_data`.
+- Also creates/updates canonical TaxMaxx session and draft 1040 in Mongo.
+
+Request (`multipart/form-data`):
+- `files` (repeatable file field, expected names include `W2` and `1098-T`)
+- `mock_mode` (bool, optional)
+
+Response:
+```json
+{
+  "session_id": "session_ab12cd34ef56",
+  "source": "parsed",
+  "calculations": {
+    "income": {},
+    "deductions_credits": {},
+    "tax_and_refund": {}
+  },
+  "box_data": {},
+  "draft_1040": {
+    "line_1a": 52000,
+    "line_1z": 52000
+  }
+}
+```
+
+### 2c) Parser raw-data persistence endpoints (frontend editing flow)
+- `POST /api/parser/box-data/store`
+- `PUT /api/parser/box-data/{doc_id}`
+- `DELETE /api/parser/box-data/{doc_id}`
 
 ### 3) `POST /api/tax-session/upsert`
 Purpose:
@@ -224,12 +263,12 @@ Response:
 ### 7) `POST /api/chatbot/ask/{session_id}` (Optional/Future)
 Purpose:
 - Ask questions about the current session and draft values.
-- Works with placeholder response even when Gemini is disabled.
+- Works with Gemini when configured and deterministic fallback when unavailable.
 
 Request (`application/json`):
 ```json
 {
-  "question": "Why is line_34 zero?"
+  "message": "Why is line_34 zero?"
 }
 ```
 
@@ -237,11 +276,17 @@ Response (mock mode example):
 ```json
 {
   "session_id": "session_mock_001",
-  "answer": "Mock assistant response: I can explain your draft once available. Current draft fields: line_11a, line_11b, line_15, line_16, line_1a, line_1z, line_25a, line_25d, line_34, line_9.",
-  "source": "mock",
-  "question_echo": "Why is line_34 zero?"
+  "answer": "Line 34 estimates refund as max(line 25d - line 16, 0)...",
+  "source": "gemini"
 }
 ```
+
+Chatbot guardrails:
+- Explains only supported lines and stored values.
+- Explains math in plain English with session values.
+- States unsupported sections require more inputs/rules.
+- States personal identity fields (name/SSN/address) are intentionally not parsed for privacy and must be manually filled on the 1040 PDF.
+- Reminds users to use the 1040 PDF tab as the form companion.
 
 ## Required Input Fields (Current MVP)
 
@@ -309,14 +354,28 @@ This allows:
 
 ## Run Locally
 
-1. Create environment file:
+Recommended (venv-first):
+
+1. Create and activate virtual environment:
+   - `python3 -m venv .venv`
+   - `source .venv/bin/activate`
+2. Create environment file:
    - `cp .env.example .env`
-2. Install dependencies:
-   - `pip install -r requirements.txt`
-3. Start API:
-   - `uvicorn app.main:app --reload`
-4. Open docs:
+3. Install dependencies:
+   - `python -m pip install -r requirements.txt`
+4. Start API:
+   - `python -m uvicorn app.main:app --reload`
+5. Open docs:
    - `http://127.0.0.1:8000/docs`
+
+Dependency management note:
+- The backend source of truth is `requirements.txt` (pip).
+- If teammates use other tooling (e.g., `uv`), keep generated lock/tool files optional and do not replace this baseline unless the team agrees.
+
+Parser env note:
+- For live Azure parsing in `/api/parser/box-data` or `/api/parser/parse`:
+  - set `AZURE_KEY`
+  - set `AZURE_ENDPOINT`
 
 ## External non-coding tasks
 

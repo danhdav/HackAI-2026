@@ -1,6 +1,7 @@
 """FastAPI application entrypoint."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routes.calculations import router as calculations_router
@@ -17,6 +18,17 @@ app = FastAPI(
         "TaxMaxx backend skeleton for document intake, tax session storage, "
         "deterministic 1040 draft calculations, and optional chatbot scaffolding."
     ),
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(health_router)
